@@ -4,6 +4,11 @@
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
+        <PackageId>TypedItem</PackageId>
+        <Title>A set of CosmosDB extension to managed typed container items</Title>
+        <Authors>Michel Perfetti</Authors>
+        <RepositoryUrl>https://github.com/miiitch/TypedItem</RepositoryUrl>
+        <PackageTags>CosmosDB</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
