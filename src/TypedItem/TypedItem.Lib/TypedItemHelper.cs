@@ -2,11 +2,12 @@
 
 namespace TypedItem.Lib
 {
-    public static class TypedItemHelper<T> where T : TypedItemBase, new()
+    public static class TypedItemHelper<TItemType> where TItemType : TypedItemBase, new()
     {
-        public static string DocumentType { get; } = new T().DocumentType;
+        // ReSharper disable once MemberCanBePrivate.Global
+        public static string DocumentType { get; } = new TItemType().DocumentType;
         
-        public static bool HasSameType<U>(U u) where U : TypedItemBase => string.CompareOrdinal(DocumentType, u.DocumentType) == 0;
+        public static bool HasSameType<TItemTypeToCompareU>(TItemTypeToCompareU u) where TItemTypeToCompareU : TypedItemBase => string.CompareOrdinal(DocumentType, u.DocumentType) == 0;
 
         public static string GenerateId() => $"{DocumentType}-{Guid.NewGuid():N}";
     }
