@@ -15,4 +15,14 @@ namespace TypedItem.Tests.ItemModels
         [JsonProperty("lastName")]
         public string LastName { get; set; }
     }
+
+    public class AddressItem : TypedItemBase
+    {
+        public AddressItem():base("address")
+        {
+            
+        }
+        
+        public string City { get; set; }
+    }
 }

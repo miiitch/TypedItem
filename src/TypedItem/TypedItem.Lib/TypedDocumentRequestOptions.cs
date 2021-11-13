@@ -4,7 +4,7 @@ namespace TypedItem.Lib
 {
     public class TypedDocumentRequestOptions : ItemRequestOptions
     {
-        public bool RetrieveDeleted { get; set; } = false;
+        public bool ReadDeleted { get; set; } = false;
         
     }
 }

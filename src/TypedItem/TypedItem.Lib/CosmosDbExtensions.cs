@@ -74,7 +74,7 @@ namespace TypedItem.Lib
             TypedDocumentRequestOptions? options = null,
             CancellationToken cancellationToken = default) where T : TypedItemBase, new()
         {
-            var readDeleted = options is { RetrieveDeleted: true };
+            var readDeleted = options is { ReadDeleted: true };
             var result = await container.ReadItemAsync<T>(id, partitionKey, options, cancellationToken);
             if (result is null ||
                 !readDeleted && result.Resource.Deleted ||
@@ -105,32 +105,30 @@ namespace TypedItem.Lib
             return await container.SoftDeleteTypedItemAsync(item, requestOptions, cancellationToken);
         }
 
-        public static async Task<T> SoftDeleteTypedItemAsync<T>(this Container container,
-            T? document,
+        public static async Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,
+            T item,
             ItemRequestOptions? requestOptions = null,
-            CancellationToken cancellationToken = default) where T : TypedItemBase, new()
+            CancellationToken cancellationToken = default) where T : TypedItemBase
         {
-            if (document is null)
+            if (item.PartitionKey is null)
             {
-                throw new ArgumentNullException(nameof(document));
+                throw new ArgumentNullException("Item's pk is null");
             }
 
-            if (document.Deleted)
+            if (item.Deleted)
             {
-                return document;
+                throw new ArgumentException("Already deleted");
             }
-
             
-
-            document.Deleted = true;
+            item.Deleted = true;
             var upsertOptions = requestOptions is not null ? requestOptions.Clone() : new ItemRequestOptions();
 
-            upsertOptions.IfMatchEtag = document.ETag;
+            upsertOptions.IfMatchEtag = item.ETag;
 
-            var ret = await container.UpsertItemAsync(document, document.PartitionKey.AsPartitionKey(), upsertOptions,
+            var ret = await container.UpsertItemAsync(item, item.PartitionKey.AsPartitionKey(), upsertOptions,
                 cancellationToken);
 
-            return ret.Resource;
+            return ret;
         }
     }
 }
