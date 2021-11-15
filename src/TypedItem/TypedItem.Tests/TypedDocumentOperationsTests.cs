@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json.Linq;
@@ -18,6 +20,47 @@ namespace TypedItem.Tests
         public TypedDocumentOperationsTests(CosmosDbDatabaseFixture cosmosDb)
         {
             this._cosmosDb = cosmosDb;
+        }
+
+        private async Task<(List<PersonItem> items, int nonDeletedCount, int deletecount)> FillContainer(int count)
+        {
+            var firstNames = new string[]
+                { "Alice", "Bob", "Candice", "Daniel", "Eric", "Frances", "Georges", "Helena","Igor","Katia","Lionel","Mimi","Nicolas" };
+            var lastNames = new string[]
+            {
+                "A", "B", "C", "D", "E", "F", "G", "H","I","J","K","L","M","N","O","P","Q"
+            };
+
+            var now = DateTime.UtcNow;
+            var rnd = new Random();
+            var items = new List<PersonItem>();
+            var (nonDeletedCount, deleteCount) = (0, 0);
+            for (var i = 0; i < count; i++)
+            {
+                var birthdate = now - TimeSpan.FromDays(365 * 10 + rnd.Next(365 * 50));
+                var item = new PersonItem()
+                {
+                    Id = TypedItemHelper<PersonItem>.GenerateId(),
+                    FirstName = firstNames[rnd.Next(firstNames.Length)],
+                    LastName = lastNames[rnd.Next(lastNames.Length)],
+                    BirthDate = birthdate,
+                    PartitionKey = $"P{(i / 100)}",
+                    Deleted = i%10 == 0
+                };
+                if (item.Deleted)
+                {
+                    deleteCount++;
+                }
+                else
+                {
+                    nonDeletedCount++;
+                }
+                items.Add(item);
+                
+                await Container.UpsertItemAsync(item);
+            }
+
+            return (items, nonDeletedCount, deleteCount);
         }
 
 
@@ -97,6 +140,36 @@ namespace TypedItem.Tests
 
             await Container.UpsertItemAsync(personItem);
             await Container.SoftDeleteTypedItemAsync(personItem);
+
+            Check.ThatAsyncCode(async () =>
+                    await Container.ReadTypedItemAsync<PersonItem>(personItem.Id,
+                        personItem.PartitionKey.AsPartitionKey()))
+                .Throws<CosmosException>();
+
+            var savedPersonResponse =
+                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
+
+            var savedPerson = savedPersonResponse.Resource;
+
+            Check.That(savedPerson["_deleted"].ToObject<bool>()).Equals(true);
+        }
+        
+        [Fact]
+        public async Task a_deleted_typed_item_from_id_has_this_deleted_field_to_false_and_cant_be_read()
+        {
+            var personItem = new PersonItem()
+            {
+                Id = _cosmosDb.GenerateId(),
+                FirstName = "John",
+                LastName = "Doe",
+                PartitionKey = "01"
+            };
+
+            await Container.UpsertItemAsync(personItem);
+            await Container.SoftDeleteTypedItemAsync<PersonItem>(
+                id: personItem.Id, 
+                partitionKey: personItem.PartitionKey.AsPartitionKey(),
+                requestOptions: new ItemRequestOptions());
 
             Check.ThatAsyncCode(async () =>
                     await Container.ReadTypedItemAsync<PersonItem>(personItem.Id,
@@ -193,6 +266,64 @@ namespace TypedItem.Tests
             
             Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync(personItem))
                 .Throws<ArgumentException>();
+        }
+        
+        [Fact]
+        public async Task cant_soft_delete_an_unknown_item()
+        {
+            Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync<PersonItem>("toto","titi".AsPartitionKey()))
+                .Throws<CosmosException>();
+        }
+
+        [Fact]
+        public async  Task query_all_a_subset_of_items()
+        {
+            var  (items, nonDeletedCount, deleteCount) = await FillContainer(1000);
+
+            var options = new QueryTypedItemsOptions()
+            {
+                MaxItemCount = 100,
+                IncludeDeletedItems = false
+            };
+            var result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p,options);
+
+            Check.That(result.Count).IsEqualTo(options.MaxItemCount);
+            Check.That(result.RequestCharge).IsStrictlyGreaterThan(0);
+            Check.That(result.ContinuationToken).Not.IsNullOrWhiteSpace();
+            foreach (var p in result.Results)
+            {
+                Check.That(p.Deleted).IsFalse();
+            }
+            
+            options = new QueryTypedItemsOptions()
+            {
+                MaxItemCount = 100,
+                IncludeDeletedItems = true
+            };
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p,options);
+            Check.That(result.Results.Any(p => p.Deleted)).IsTrue();
+            Check.That(result.Results.Count).IsEqualTo(options.MaxItemCount);
+            
+
+            options = new QueryTypedItemsOptions()
+            {
+                ReadAllPages = true
+            };
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p,options);
+            Check.That(result.Results.All(p => !p.Deleted)).IsTrue();
+            Check.That(result.Results.Count).IsEqualTo(nonDeletedCount);
+            Check.That(result.ContinuationToken).IsNull();
+            
+            options = new QueryTypedItemsOptions()
+            {
+                ReadAllPages = true,
+                IncludeDeletedItems = true,
+            };
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p,options);
+            Check.That(result.Results.Any(p => p.Deleted)).IsTrue();
+            Check.That(result.Results.Count).IsEqualTo(items.Count);
+            Check.That(result.ContinuationToken).IsNull();
+
         }
     }
 }

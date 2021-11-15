@@ -11,13 +11,6 @@ namespace TypedItem.Lib
 {
     public static class CosmosDbExtensions
     {
-        public static ItemRequestOptions WithSession(this ItemRequestOptions options, string sessionToken)
-        {
-            options.SessionToken = sessionToken;
-
-            return options;
-        }
-
         public static ItemRequestOptions WithETag<T>(this ItemRequestOptions options, T document) where T : ItemBase
         {
             options.IfMatchEtag = document.ETag;
@@ -25,10 +18,7 @@ namespace TypedItem.Lib
             return options;
         }
 
-        public static string GetSessionToken<T>(this ItemResponse<T> itemResponse)
-        {
-            return itemResponse.Headers.Session;
-        }
+        public static string GetSessionToken<T>(this ItemResponse<T> itemResponse) => itemResponse.Headers.Session;
 
 
         public static PartitionKey AsPartitionKey(this string partitionKey) => new PartitionKey(partitionKey);
@@ -41,31 +31,43 @@ namespace TypedItem.Lib
             
             queryOptions?.Fill(options);
             
-            IQueryable<TFrom> fromQuery = container.GetItemLinqQueryable<TFrom>();
+            IQueryable<TFrom> fromQuery = container.GetItemLinqQueryable<TFrom>(
+                requestOptions: options, 
+                continuationToken:queryOptions?.ContinuationToken);
             
-            if (queryOptions is { KeepDeleted: true })
+            if (queryOptions is { IncludeDeletedItems: false })
             {
                 fromQuery = fromQuery.Where(item => !item.Deleted);    
             }
             
             var iterator = queryFunc(fromQuery).ToFeedIterator();
 
-            DataQueryResponse<TTo> result = null;
+            DataQueryResponse<TTo>? result = null;
             
-            var response = await iterator.ReadNextAsync(cancellationToken);
+            await ReadFeedIteratorAsync(queryOptions?.ReadAllPages == false);
 
-            result ??= new DataQueryResponse<TTo>
+            if (queryOptions?.ReadAllPages == true)
             {
-                ContinuationToken = response.ContinuationToken,
-                Results = new List<TTo>(response.Count)
-            };
-
-            foreach (var resultItem in response)
-            {
-                result.Results.Add(resultItem);
+                while (iterator.HasMoreResults)
+                {
+                    await ReadFeedIteratorAsync(false);
+                }
             }
 
-            return result;
+            return result!;
+
+            async Task ReadFeedIteratorAsync(bool setContinuationToken)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken);
+
+                result ??= new DataQueryResponse<TTo>(new List<TTo>(response.Count), setContinuationToken?response.ContinuationToken:null);
+
+                result.RequestCharge += response.RequestCharge;
+                foreach (var resultItem in response)
+                {
+                    result.Results.Add(resultItem); 
+                }
+            }
         }
 
         public static async Task<ItemResponse<T>> ReadTypedItemAsync<T>(this Container container,
@@ -95,14 +97,8 @@ namespace TypedItem.Lib
             CancellationToken cancellationToken = new()) where T : TypedItemBase, new()
         {
             var result = await container.ReadItemAsync<T>(id, partitionKey, requestOptions, cancellationToken);
-            if (result is null)
-            {
-                throw new CosmosException("Missing document", HttpStatusCode.NotFound, 0, null, 0);
-            }
-
-            var item = result.Resource;
-
-            return await container.SoftDeleteTypedItemAsync(item, requestOptions, cancellationToken);
+            
+            return await container.SoftDeleteTypedItemAsync(result.Resource, requestOptions, cancellationToken);
         }
 
         public static async Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,

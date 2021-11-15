@@ -2,11 +2,14 @@
 
 namespace TypedItem.Lib
 {
-    public record DataQueryResponse<T>
+    public record DataQueryResponse<T>(List<T> Results, string? ContinuationToken=null)
     {
-        public List<T> Results { get; set; }
+        public List<T> Results { get; } = Results;
 
-        public string? ContinuationToken { get; set;}
+        public int Count => Results.Count;
+        public string? ContinuationToken { get;} = ContinuationToken;
+
+        public double RequestCharge { get; set; }
         
     }
 }
