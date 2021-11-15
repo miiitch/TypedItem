@@ -8,7 +8,10 @@
         <Title>A set of CosmosDB extension to managed typed container items</Title>
         <Authors>Michel Perfetti</Authors>
         <RepositoryUrl>https://github.com/miiitch/TypedItem</RepositoryUrl>
-        <PackageTags>CosmosDB</PackageTags>
+        <PackageTags>CosmosDB c# csharp dotnet .net</PackageTags>
+        <PackageProjectUrl>https://github.com/miiitch/TypedItem</PackageProjectUrl>
+        <PackageLicenseUrl>https://raw.githubusercontent.com/miiitch/TypedItem/main/LICENSE</PackageLicenseUrl>
+        <PackageIconUrl>https://raw.githubusercontent.com/miiitch/TypedItem/main/icon.png</PackageIconUrl>
     </PropertyGroup>
 
     <ItemGroup>
