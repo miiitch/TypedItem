@@ -89,22 +89,33 @@ namespace TypedItem.Lib
         }
 
 
-        public static async Task<T> SoftDeleteTypedItemAsync<T>(this Container container,
+        public static Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,
             string id,
             PartitionKey partitionKey,
             ItemRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = new()) where T : TypedItemBase, new()
         {
-            var result = await container.ReadItemAsync<T>(id, partitionKey, requestOptions, cancellationToken);
-            
-            return await container.SoftDeleteTypedItemAsync(result.Resource, requestOptions, cancellationToken);
+            var patchOperations = new PatchOperation[]
+            {
+                PatchOperation.Replace("/_deleted", true)
+            };
+
+            var patchOptions = new PatchItemRequestOptions();
+            requestOptions?.Fill(patchOptions);
+            patchOptions.FilterPredicate = "FROM item WHERE NOT item._deleted";
+            return container.PatchItemAsync<T>(id, partitionKey, patchOperations, patchOptions, cancellationToken);
         }
 
-        public static async Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,
+        public static Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,
             T item,
             ItemRequestOptions? requestOptions = null,
-            CancellationToken cancellationToken = default) where T : TypedItemBase
+            CancellationToken cancellationToken = default) where T : TypedItemBase, new()
         {
+            if (item.Id is null)
+            {
+                throw new ArgumentNullException("Item's id is null");
+            }
+            
             if (item.PartitionKey is null)
             {
                 throw new ArgumentNullException("Item's pk is null");
@@ -114,18 +125,29 @@ namespace TypedItem.Lib
             {
                 throw new ArgumentException("Already deleted");
             }
-            
-            item.Deleted = true;
-            var upsertOptions = requestOptions is not null ? requestOptions.Clone() : new ItemRequestOptions();
 
-            upsertOptions.IfMatchEtag = item.ETag;
+            requestOptions ??= new ItemRequestOptions();
+            requestOptions.IfMatchEtag = item.ETag;
 
-            var ret = await container.UpsertItemAsync(item, item.PartitionKey.AsPartitionKey(), upsertOptions,
-                cancellationToken);
+            return container.SoftDeleteTypedItemAsync<T>(item.Id, item.PartitionKey.AsPartitionKey(), requestOptions, cancellationToken);
+        }
 
-            return ret;
+        private static void Fill(this ItemRequestOptions itemRequestOptions,
+            PatchItemRequestOptions patchItemRequestOptions)
+        {
+            patchItemRequestOptions.Properties = itemRequestOptions.Properties;
+            patchItemRequestOptions.ConsistencyLevel = itemRequestOptions.ConsistencyLevel;
+            patchItemRequestOptions.IndexingDirective = itemRequestOptions.IndexingDirective;
+            patchItemRequestOptions.PostTriggers = itemRequestOptions.PostTriggers;
+            patchItemRequestOptions.PreTriggers = itemRequestOptions.PreTriggers;
+            patchItemRequestOptions.SessionToken = itemRequestOptions.SessionToken;
+            patchItemRequestOptions.IfMatchEtag = itemRequestOptions.IfMatchEtag;
+            patchItemRequestOptions.IfNoneMatchEtag = itemRequestOptions.IfNoneMatchEtag;
+            patchItemRequestOptions.EnableContentResponseOnWrite = itemRequestOptions.EnableContentResponseOnWrite;
         }
     }
+    
+    
 }
 
 

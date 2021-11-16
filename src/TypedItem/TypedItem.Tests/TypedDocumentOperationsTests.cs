@@ -270,6 +270,21 @@ namespace TypedItem.Tests
         }
         
         [Fact]
+        public async Task cant_soft_delete_an_item_without_id()
+        {
+            var personItem = new PersonItem()
+            {
+                Id = null,
+                PartitionKey = "JK",
+                FirstName = "John",
+                LastName = "Doe",
+            };
+            
+            Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync(personItem))
+                .Throws<ArgumentException>();
+        }
+        
+        [Fact]
         public async Task cant_soft_delete_an_unknown_item()
         {
             Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync<PersonItem>("toto","titi".AsPartitionKey()))
