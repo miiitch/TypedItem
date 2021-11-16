@@ -95,7 +95,7 @@ namespace TypedItem.Lib
             ItemRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = new()) where T : TypedItemBase, new()
         {
-            var patchOperations = new PatchOperation[]
+            var patchOperations = new[]
             {
                 PatchOperation.Replace("/_deleted", true)
             };
@@ -113,12 +113,14 @@ namespace TypedItem.Lib
         {
             if (item.Id is null)
             {
-                throw new ArgumentNullException("Item's id is null");
+                // ReSharper disable once NotResolvedInText
+                throw new ArgumentNullException("item.id");
             }
             
             if (item.PartitionKey is null)
             {
-                throw new ArgumentNullException("Item's pk is null");
+                // ReSharper disable once NotResolvedInText
+                throw new ArgumentNullException("item.PartitionKey");
             }
 
             if (item.Deleted)

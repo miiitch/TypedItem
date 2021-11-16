@@ -24,9 +24,9 @@ namespace TypedItem.Tests
 
         private async Task<(List<PersonItem> items, int nonDeletedCount, int deletecount)> FillContainer(int count)
         {
-            var firstNames = new string[]
+            var firstNames = new[]
                 { "Alice", "Bob", "Candice", "Daniel", "Eric", "Frances", "Georges", "Helena","Igor","Katia","Lionel","Mimi","Nicolas" };
-            var lastNames = new string[]
+            var lastNames = new[]
             {
                 "A", "B", "C", "D", "E", "F", "G", "H","I","J","K","L","M","N","O","P","Q"
             };
@@ -256,7 +256,7 @@ namespace TypedItem.Tests
         }
 
         [Fact]
-        public async Task cant_soft_delete_an_item_without_partition_key()
+        public void cant_soft_delete_an_item_without_partition_key()
         {
             var personItem = new PersonItem()
             {
@@ -270,7 +270,7 @@ namespace TypedItem.Tests
         }
         
         [Fact]
-        public async Task cant_soft_delete_an_item_without_id()
+        public Task cant_soft_delete_an_item_without_id()
         {
             var personItem = new PersonItem()
             {
@@ -282,19 +282,24 @@ namespace TypedItem.Tests
             
             Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync(personItem))
                 .Throws<ArgumentException>();
+
+            return Task.CompletedTask;
         }
         
         [Fact]
-        public async Task cant_soft_delete_an_unknown_item()
+        public Task cant_soft_delete_an_unknown_item()
         {
+            // ReSharper disable once StringLiteralTypo
             Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync<PersonItem>("toto","titi".AsPartitionKey()))
                 .Throws<CosmosException>();
+
+            return Task.CompletedTask;
         }
 
         [Fact]
         public async  Task query_all_a_subset_of_items()
         {
-            var  (items, nonDeletedCount, deleteCount) = await FillContainer(1000);
+            var  (items, nonDeletedCount, _) = await FillContainer(1000);
 
             var options = new QueryTypedItemsOptions()
             {
