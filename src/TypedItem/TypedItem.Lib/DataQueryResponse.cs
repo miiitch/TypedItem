@@ -10,6 +10,7 @@ namespace TypedItem.Lib
         public string? ContinuationToken { get;} = ContinuationToken;
 
         public double RequestCharge { get; set; }
-        
+
+        public string? SessionToken { get; set; }
     }
 }

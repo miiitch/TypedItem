@@ -45,7 +45,8 @@ namespace TypedItem.Tests
                     LastName = lastNames[rnd.Next(lastNames.Length)],
                     BirthDate = birthdate,
                     PartitionKey = $"P{(i / 100)}",
-                    Deleted = i%10 == 0
+                    Deleted = i%10 == 0,
+                    Index = i
                 };
                 if (item.Deleted)
                 {
@@ -298,7 +299,8 @@ namespace TypedItem.Tests
             options = new QueryTypedItemsOptions()
             {
                 MaxItemCount = 100,
-                IncludeDeletedItems = true
+                IncludeDeletedItems = true,
+                MaxConcurrency = 0
             };
             result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p,options);
             Check.That(result.Results.Any(p => p.Deleted)).IsTrue();
@@ -324,6 +326,43 @@ namespace TypedItem.Tests
             Check.That(result.Results.Count).IsEqualTo(items.Count);
             Check.That(result.ContinuationToken).IsNull();
 
+            
+            
+            // Continuation token test
+            options = new QueryTypedItemsOptions()
+            {
+                ReadAllPages = false,
+                MaxItemCount = 10
+            };
+            
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
+            var maxIndex = result.Results.Max(_ => _.Index);
+
+            options.ContinuationToken = result.ContinuationToken;
+            options.SessionToken = result.SessionToken;
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
+            
+            var minIndex = result.Results.Min(_ => _.Index);
+            Check.That(maxIndex).IsStrictlyLessThan(minIndex);
+
+            
+            // Partition Key
+            var pk = "P0";
+            options = new QueryTypedItemsOptions()
+            {
+                ReadAllPages = false,
+                PartitionKey = new PartitionKey(pk)
+            };
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
+            Check.That(result.Results.All(_ => _.PartitionKey == pk));
+            
+            // ConsistencyLevel
+            options = new QueryTypedItemsOptions()
+            {
+                ConsistencyLevel = ConsistencyLevel.Eventual
+            };
+            result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
+            Check.That(result.Results.All(_ => _.PartitionKey == pk));
         }
     }
 }

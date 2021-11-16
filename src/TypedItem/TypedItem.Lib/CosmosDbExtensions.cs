@@ -17,10 +17,7 @@ namespace TypedItem.Lib
 
             return options;
         }
-
-        public static string GetSessionToken<T>(this ItemResponse<T> itemResponse) => itemResponse.Headers.Session;
-
-
+        
         public static PartitionKey AsPartitionKey(this string partitionKey) => new PartitionKey(partitionKey);
 
         public static async Task<DataQueryResponse<TTo>> QueryTypedItemAsync<TFrom, TTo>(this Container container,
@@ -67,6 +64,8 @@ namespace TypedItem.Lib
                 {
                     result.Results.Add(resultItem); 
                 }
+
+                result.SessionToken = response.Headers.Session;
             }
         }
 

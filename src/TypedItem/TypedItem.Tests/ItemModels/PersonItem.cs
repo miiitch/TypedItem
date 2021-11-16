@@ -18,5 +18,8 @@ namespace TypedItem.Tests.ItemModels
         
         [JsonProperty("birthdate")]
         public DateTime BirthDate { get; set; }
+        
+        [JsonProperty("index")]
+        public int Index { get; set; }
     }
 }
