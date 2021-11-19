@@ -2,7 +2,7 @@
 
 namespace TypedItem.Lib
 {
-    public class TypedDocumentRequestOptions : ItemRequestOptions
+    public class TypedItemRequestOptions : ItemRequestOptions
     {
         public bool ReadDeleted { get; set; } = false;
         

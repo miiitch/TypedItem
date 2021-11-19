@@ -27,7 +27,7 @@ namespace TypedItem.Tests.ItemModels
         
     }
 
-    public class CustomDocument : TypedItemBase
+    public class CustomAndInvalidItem : TypedItemBase
     {
         
     }

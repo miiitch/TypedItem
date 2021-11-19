@@ -11,9 +11,9 @@ namespace TypedItem.Lib
 {
     public static class CosmosDbExtensions
     {
-        public static ItemRequestOptions WithETag<T>(this ItemRequestOptions options, T document) where T : ItemBase
+        public static ItemRequestOptions WithETag<T>(this ItemRequestOptions options, T item) where T : ItemBase
         {
-            options.IfMatchEtag = document.ETag;
+            options.IfMatchEtag = item.ETag;
 
             return options;
         }
@@ -104,7 +104,7 @@ namespace TypedItem.Lib
         public static async Task<ItemResponse<T>> ReadTypedItemAsync<T>(this Container container,
             string id,
             PartitionKey partitionKey,
-            TypedDocumentRequestOptions? options = null,
+            TypedItemRequestOptions? options = null,
             CancellationToken cancellationToken = default) where T : TypedItemBase, new()
         {
             var readDeleted = options is { ReadDeleted: true };

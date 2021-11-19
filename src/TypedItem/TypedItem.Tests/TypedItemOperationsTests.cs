@@ -11,13 +11,13 @@ using Xunit;
 
 namespace TypedItem.Tests
 {
-    public class TypedDocumentOperationsTests
+    public class TypedItemOperationsTests
         : IClassFixture<CosmosDbDatabaseFixture>, IAsyncLifetime
     {
         private readonly CosmosDbDatabaseFixture _cosmosDb;
         private string _containerId;
 
-        public TypedDocumentOperationsTests(CosmosDbDatabaseFixture cosmosDb)
+        public TypedItemOperationsTests(CosmosDbDatabaseFixture cosmosDb)
         {
             this._cosmosDb = cosmosDb;
         }
@@ -246,7 +246,7 @@ namespace TypedItem.Tests
 
             var response = await Container.ReadTypedItemAsync<PersonItem>(actualPersonItem.Id,
                 actualPersonItem.PartitionKey.AsPartitionKey(),
-                new TypedDocumentRequestOptions()
+                new TypedItemRequestOptions()
                 {
                     ReadDeleted = true
                 });

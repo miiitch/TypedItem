@@ -6,16 +6,16 @@ namespace TypedItem.Lib
     {
         
         // ReSharper disable once MemberCanBePrivate.Global
-        public static string ItemType => GetDocumentType();
+        public static string ItemType => GetItemType();
 
-        private static string? _computedDocumentType = null;
-        private static string GetDocumentType()
+        private static string? _computedItemType = null;
+        private static string GetItemType()
         {
-            _computedDocumentType ??= ComputeDocumentType(typeof(TItemType));
+            _computedItemType ??= ComputeItemType(typeof(TItemType));
             
-            return _computedDocumentType;
+            return _computedItemType;
             
-            string ComputeDocumentType(Type type)
+            string ComputeItemType(Type type)
             {
                 var attributes = type.GetCustomAttributes(typeof(ItemTypeAttribute), false) as ItemTypeAttribute[];
                 if (attributes is null ||
@@ -33,7 +33,7 @@ namespace TypedItem.Lib
                     return name;
                 }
 
-                return ComputeDocumentType(parent) + "." + name;
+                return ComputeItemType(parent) + "." + name;
             }
         }
 

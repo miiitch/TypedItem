@@ -6,10 +6,8 @@ using Xunit;
 
 namespace TypedItem.Tests
 {
-    public class TypedDocumentTypeHelperTests
+    public class TypedItemTypeHelperTests
     {
-
-
         [Fact]
         public void sealed_class_that_inherits_from_TypedItemBase_is_valid()
         {
@@ -41,7 +39,7 @@ namespace TypedItem.Tests
         [Fact]
         public void class_without_type_attribute_is_invalid()
         {
-            Check.ThatCode(() => TypedItemHelper<CustomDocument>.ItemType).Throws<TypedItemException>();
+            Check.ThatCode(() => TypedItemHelper<CustomAndInvalidItem>.ItemType).Throws<TypedItemException>();
         }
 
         [Fact]
