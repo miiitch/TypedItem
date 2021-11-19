@@ -20,6 +20,38 @@ namespace TypedItem.Lib
         
         public static PartitionKey AsPartitionKey(this string partitionKey) => new PartitionKey(partitionKey);
 
+        public static Task<ItemResponse<T>> UpsertTypedItemAsync<T>(this Container container,
+            T item,
+            PartitionKey? partitionKey = null,
+            ItemRequestOptions? requestOptions = null,
+            CancellationToken cancellationToken = default) where T: TypedItemBase, new()
+        {
+            TypedItemHelper<T>.PrepareItem(item);
+            return container.UpsertItemAsync(item, partitionKey, requestOptions, cancellationToken);
+        }
+        
+        public static Task<ItemResponse<T>> ReplaceTypedItemAsync<T>(this Container container,
+            T item,
+            string id,
+            PartitionKey? partitionKey = null,
+            ItemRequestOptions? requestOptions = null,
+            CancellationToken cancellationToken = default) where T: TypedItemBase, new()
+        {
+            TypedItemHelper<T>.PrepareItem(item);
+            return container.ReplaceItemAsync(item, id, partitionKey, requestOptions, cancellationToken);
+        }
+        
+        public static Task<ItemResponse<T>> CreateTypedItemAsync<T>(this Container container,
+            T item,
+            PartitionKey? partitionKey = null,
+            ItemRequestOptions? requestOptions = null,
+            CancellationToken cancellationToken = default) where T: TypedItemBase, new()
+        {
+            TypedItemHelper<T>.PrepareItem(item);
+            return container.CreateItemAsync(item, partitionKey, requestOptions, cancellationToken);
+        }
+
+        
         public static async Task<DataQueryResponse<TTo>> QueryTypedItemAsync<TFrom, TTo>(this Container container,
             Func<IQueryable<TFrom>, IQueryable<TTo>> queryFunc, QueryTypedItemsOptions? queryOptions = null, CancellationToken cancellationToken = default)
             where TFrom : TypedItemBase, new()
@@ -148,7 +180,17 @@ namespace TypedItem.Lib
             patchItemRequestOptions.EnableContentResponseOnWrite = itemRequestOptions.EnableContentResponseOnWrite;
         }
     }
-    
+
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+    public class ItemTypeAttribute : Attribute
+    {
+        public string Name { get; }
+        public ItemTypeAttribute(string name)
+        {
+            Name = name;
+        }
+    }
     
 }
 

@@ -6,11 +6,8 @@ namespace TypedItem.Lib
     {
         [JsonProperty("_deleted")] public bool Deleted { get; set; }
 
-        [JsonProperty("_type")] public string DocumentType { get; set; }
+        [JsonProperty("_type")] public string? ItemType { get; set; }
 
-        public TypedItemBase(string type)
-        {
-            DocumentType = type;
-        }
+        
     }
 }

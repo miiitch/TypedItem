@@ -2,12 +2,10 @@
 
 namespace TypedItem.Tests.ItemModels
 {
-    public class AddressItem : TypedItemBase
+    [ItemType("address")]
+    public sealed class AddressItem : TypedItemBase
     {
-        public AddressItem():base("address")
-        {
-            
-        }
+  
         
         public string City { get; set; }
     }

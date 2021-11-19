@@ -58,7 +58,7 @@ namespace TypedItem.Tests
                 }
                 items.Add(item);
                 
-                await Container.UpsertItemAsync(item);
+                await Container.CreateTypedItemAsync(item);
             }
 
             return (items, nonDeletedCount, deleteCount);
@@ -79,9 +79,9 @@ namespace TypedItem.Tests
             await Container.DeleteContainerAsync();
         }
 
-
+        
         [Fact]
-        public async Task a_typed_item_is_created_with_type_and_can_be_read_if_good_type_is_specified()
+        public async Task a_typed_item_is_created_with_type_and_can_be_read_and_the_good_type_is_specified()
         {
             var expectedPersonItem = new PersonItem()
             {
@@ -91,7 +91,8 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            await Container.UpsertItemAsync(expectedPersonItem);
+            await Container.CreateTypedItemAsync(expectedPersonItem);
+            Check.That(expectedPersonItem.ItemType).IsEqualTo("person");
 
             var readResponse =
                 await Container.ReadTypedItemAsync<PersonItem>(expectedPersonItem.Id,
@@ -103,8 +104,51 @@ namespace TypedItem.Tests
             Check.That(actualPerson.FirstName).IsEqualTo(expectedPersonItem.FirstName);
             Check.That(actualPerson.LastName).IsEqualTo(expectedPersonItem.LastName);
             Check.That(actualPerson.PartitionKey).IsEqualTo(expectedPersonItem.PartitionKey);
+            Check.That(actualPerson.ItemType).IsEqualTo("person");
+        }
+        
+        [Fact]
+        public async Task a_typed_item_is_created_with_type_and_can_be_replaced()
+        {
+            var expectedPersonItem = new PersonItem()
+            {
+                Id = _cosmosDb.GenerateId(),
+                FirstName = "John",
+                LastName = "Doe",
+                PartitionKey = "01"
+            };
+
+            var createResult = await Container.CreateTypedItemAsync(expectedPersonItem);
+
+            var createdPerson = createResult.Resource!;
+            createdPerson.LastName = "Doee";
+            var readResponse =
+                await Container.ReplaceTypedItemAsync<PersonItem>(createResult,createdPerson.Id!,
+                    createdPerson.PartitionKey!.AsPartitionKey());
+
+            var actualPerson = readResponse.Resource;
+
+            Check.That(actualPerson.Id).IsEqualTo(createdPerson.Id);
+            Check.That(actualPerson.FirstName).IsEqualTo(createdPerson.FirstName);
+            Check.That(actualPerson.LastName).IsEqualTo(createdPerson.LastName);
+            Check.That(actualPerson.PartitionKey).IsEqualTo(expectedPersonItem.PartitionKey);
+            Check.That(actualPerson.ItemType).IsEqualTo("person");
         }
 
+        [Fact]
+        public async Task a_typed_item_cannot_be_created_if_the_speficied_type_is_wrong()
+        {
+            var personItem = new PersonItem()
+            {
+                Id = _cosmosDb.GenerateId(),
+                FirstName = "John",
+                LastName = "Doe",
+                PartitionKey = "01",
+                ItemType = "foo"
+            };
+
+            Check.ThatAsyncCode(async () => await Container.UpsertTypedItemAsync(personItem));
+        }
 
         [Fact]
         public async Task a_typed_item_is_created_with_type_and_deleted_fields()
@@ -117,15 +161,16 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            await Container.UpsertItemAsync(personItem);
+            await Container.UpsertTypedItemAsync(personItem);
 
             var savedPersonResponse =
                 await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
 
             var savedPerson = savedPersonResponse.Resource;
 
-            Check.That(savedPerson["_type"].ToString()).Equals(personItem.DocumentType);
+            Check.That(savedPerson["_type"].ToString()).Equals(personItem.ItemType);
             Check.That(savedPerson["_deleted"].ToObject<bool>()).Equals(personItem.Deleted);
+            Check.That(savedPerson["_type"]).IsEqualTo("person");
         }
 
         [Fact]
@@ -139,7 +184,7 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            await Container.UpsertItemAsync(personItem);
+            await Container.UpsertTypedItemAsync(personItem);
             await Container.SoftDeleteTypedItemAsync(personItem);
 
             Check.ThatAsyncCode(async () =>
@@ -166,7 +211,7 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            await Container.UpsertItemAsync(personItem);
+            await Container.UpsertTypedItemAsync(personItem);
             await Container.SoftDeleteTypedItemAsync<PersonItem>(
                 id: personItem.Id, 
                 partitionKey: personItem.PartitionKey.AsPartitionKey(),
@@ -196,7 +241,7 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            await Container.UpsertItemAsync(actualPersonItem);
+            await Container.UpsertTypedItemAsync(actualPersonItem);
             await Container.SoftDeleteTypedItemAsync(actualPersonItem);
 
             var response = await Container.ReadTypedItemAsync<PersonItem>(actualPersonItem.Id,
@@ -227,7 +272,7 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            await Container.UpsertItemAsync(personItem);
+            await Container.UpsertTypedItemAsync(personItem);
 
 
             Check.ThatAsyncCode(async () =>
@@ -247,7 +292,7 @@ namespace TypedItem.Tests
                 PartitionKey = "01"
             };
 
-            var response = await Container.UpsertItemAsync(personItem);
+            var response = await Container.UpsertTypedItemAsync(personItem);
 
             var deletedPerson = await Container.SoftDeleteTypedItemAsync(response.Resource);
 

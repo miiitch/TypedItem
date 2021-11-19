@@ -4,12 +4,10 @@ using TypedItem.Lib;
 
 namespace TypedItem.Tests.ItemModels
 {
-    public class PersonItem: TypedItemBase
+    [ItemType("person")]
+    public sealed class PersonItem: TypedItemBase
     {
-        public PersonItem() : base("person")
-        {
-        }
-        
+
         [JsonProperty("firstName")]
         public string FirstName { get; set; }
         
