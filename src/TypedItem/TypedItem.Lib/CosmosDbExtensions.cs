@@ -56,6 +56,8 @@ namespace TypedItem.Lib
             Func<IQueryable<TFrom>, IQueryable<TTo>> queryFunc, QueryTypedItemsOptions? queryOptions = null, CancellationToken cancellationToken = default)
             where TFrom : TypedItemBase, new()
         {
+            var sourceType = TypedItemHelper<TFrom>.ItemType;
+            var sourceIsFinal = TypedItemHelper<TFrom>.IsFinal;
             QueryRequestOptions options = new();
             
             queryOptions?.Fill(options);
@@ -68,6 +70,17 @@ namespace TypedItem.Lib
             {
                 fromQuery = fromQuery.Where(item => !item.Deleted);    
             }
+
+            if (sourceIsFinal)
+            {
+                fromQuery = fromQuery.Where(_ => _.ItemType == sourceType);
+            }
+            else
+            {
+                var typeToSearch = $"{sourceType}.";
+                fromQuery = fromQuery.Where(_ => _.ItemType!.StartsWith(typeToSearch));
+            }
+            
             
             var iterator = queryFunc(fromQuery).ToFeedIterator();
 

@@ -22,6 +22,49 @@ namespace TypedItem.Tests
             this._cosmosDb = cosmosDb;
         }
 
+        private async Task<List<EventItem>> FillWithEvents()
+        {
+            var result = new List<EventItem>();
+            var phoneCall = new PhonecallItem()
+            {
+                Id = TypedItemHelper<PhonecallItem>.GenerateId(),
+                Date = DateTime.Now,
+                Duration = 40,
+            };
+            result.Add(phoneCall);
+            await Container.CreateTypedItemAsync(phoneCall);
+
+            phoneCall = new PhonecallItem()
+            {
+                Id = TypedItemHelper<PhonecallItem>.GenerateId(),
+                Date = DateTime.Now-TimeSpan.FromDays(2),
+                Duration = 4,
+            };
+            result.Add(phoneCall);
+            await Container.CreateTypedItemAsync(phoneCall);
+
+            var teamsMeeting = new TeamsMeeting()
+            {
+                Id = TypedItemHelper<TeamsMeeting>.GenerateId(),
+                Date = DateTime.Now,
+                Peoples = new[] { "John" }
+            };
+            result.Add(teamsMeeting);
+            await Container.CreateTypedItemAsync(teamsMeeting);
+            
+            teamsMeeting = new TeamsMeeting()
+            {
+                Id = TypedItemHelper<TeamsMeeting>.GenerateId(),
+                Date = DateTime.Now-TimeSpan.FromDays(3),
+                Peoples = new[] { "Jack" }
+            };
+            result.Add(teamsMeeting);
+            await Container.CreateTypedItemAsync(teamsMeeting);
+
+            return result;
+
+        }
+
         private async Task<(List<PersonItem> items, int nonDeletedCount, int deletecount)> FillContainer(int count)
         {
             var firstNames = new[]
@@ -374,6 +417,7 @@ namespace TypedItem.Tests
 
             options = new QueryTypedItemsOptions()
             {
+                MaxItemCount = 10,
                 ReadAllPages = true
             };
             result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p,options);
@@ -428,6 +472,41 @@ namespace TypedItem.Tests
             };
             result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
             Check.That(result.Results.All(_ => _.PartitionKey == pk));
+        }
+
+
+        [Fact]
+        public async Task query_on_root_class_returns_all_the_items_attached_to_the_subclass_types()
+        {
+            var events = await FillWithEvents();
+
+            var queryResult =
+                await Container.QueryTypedItemAsync<EventItem, EventItem>(e => e,
+                    new QueryTypedItemsOptions() { ReadAllPages = true });
+
+            Check.That(queryResult.Count).IsEqualTo(events.Count);
+            foreach (var e in queryResult.Results)
+            {
+                Check.That(e.ItemType).IsOneOf(TypedItemHelper<PhonecallItem>.ItemType,
+                    TypedItemHelper<TeamsMeeting>.ItemType);
+            }
+        }
+        
+        [Fact]
+        public async Task query_on_a_class_returns_all_the_items_of_the_specified_class()
+        {
+            var events = await FillWithEvents();
+
+            var queryResult =
+                await Container.QueryTypedItemAsync<PhonecallItem, PhonecallItem>(e => e,
+                    new QueryTypedItemsOptions() { ReadAllPages = true });
+
+            var phoneCallType = TypedItemHelper<PhonecallItem>.ItemType;
+            Check.That(queryResult.Count).IsEqualTo(events.Count(_ => _.ItemType == phoneCallType));
+            foreach (var e in queryResult.Results)
+            {
+                Check.That(e.ItemType).IsEqualTo(TypedItemHelper<PhonecallItem>.ItemType);
+            }
         }
     }
 }
