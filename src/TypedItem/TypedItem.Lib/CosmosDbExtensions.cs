@@ -30,6 +30,16 @@ namespace TypedItem.Lib
             return container.UpsertItemAsync(item, partitionKey, requestOptions, cancellationToken);
         }
         
+        public static TransactionalBatch UpsertTypedItem<T>(this TransactionalBatch batch,
+            T item,
+            TransactionalBatchItemRequestOptions? requestOptions = null) where T: TypedItemBase, new()
+        {
+            TypedItemHelper<T>.PrepareItem(item);
+            return batch.UpsertItem(item, requestOptions);
+        }
+        
+        
+        
         public static Task<ItemResponse<T>> ReplaceTypedItemAsync<T>(this Container container,
             T item,
             string id,
@@ -41,6 +51,17 @@ namespace TypedItem.Lib
             return container.ReplaceItemAsync(item, id, partitionKey, requestOptions, cancellationToken);
         }
         
+        public static TransactionalBatch ReplaceTypedItem<T>(this TransactionalBatch batch,
+            T item,
+            TransactionalBatchItemRequestOptions? requestOptions = null) where T: TypedItemBase, new()
+        {
+            TypedItemHelper<T>.PrepareItem(item);
+            return batch.ReplaceItem(item.Id,item, requestOptions);
+        }
+
+     
+       
+        
         public static Task<ItemResponse<T>> CreateTypedItemAsync<T>(this Container container,
             T item,
             PartitionKey? partitionKey = null,
@@ -49,6 +70,14 @@ namespace TypedItem.Lib
         {
             TypedItemHelper<T>.PrepareItem(item);
             return container.CreateItemAsync(item, partitionKey, requestOptions, cancellationToken);
+        }
+        
+        public static TransactionalBatch CreateTypedItem<T>(this TransactionalBatch batch,
+            T item,
+            TransactionalBatchItemRequestOptions? requestOptions = null) where T: TypedItemBase, new()
+        {
+            TypedItemHelper<T>.PrepareItem(item);
+            return batch.CreateItem(item, requestOptions);
         }
 
         
@@ -150,6 +179,19 @@ namespace TypedItem.Lib
             patchOptions.FilterPredicate = "FROM item WHERE NOT item._deleted";
             return container.PatchItemAsync<T>(id, partitionKey, patchOperations, patchOptions, cancellationToken);
         }
+        
+        public static TransactionalBatch SoftDeleteTypedItem(this TransactionalBatch batch, string id,  TransactionalBatchPatchItemRequestOptions? requestOptions = null)
+        {
+            var patchOperations = new[]
+            {
+                PatchOperation.Replace("/_deleted", true)
+            };
+
+            requestOptions ??= new();
+            requestOptions.FilterPredicate = "FROM item WHERE NOT item._deleted";
+            return batch.PatchItem(id, patchOperations, requestOptions);
+        }
+
 
         public static Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,
             T item,
@@ -195,7 +237,7 @@ namespace TypedItem.Lib
     }
 
 
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class)]
     public class ItemTypeAttribute : Attribute
     {
         public string Name { get; }
@@ -204,6 +246,8 @@ namespace TypedItem.Lib
             Name = name;
         }
     }
+    
+    
     
 }
 
