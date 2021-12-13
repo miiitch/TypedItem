@@ -1,4 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json.Linq;
 
 namespace TypedItem.Lib
 {
@@ -8,33 +13,17 @@ namespace TypedItem.Lib
         // ReSharper disable once MemberCanBePrivate.Global
         public static string ItemType => GetItemType();
 
+        // ReSharper disable once StaticMemberInGenericType
         private static string? _computedItemType = null;
         private static string GetItemType()
         {
-            _computedItemType ??= ComputeItemType(typeof(TItemType));
+            _computedItemType ??= typeof(TItemType).GetItemType();
+            if (_computedItemType is null)
+            {
+                throw new TypedItemException("ItemType attribute is missing");
+            }
             
             return _computedItemType;
-            
-            string ComputeItemType(Type type)
-            {
-                var attributes = type.GetCustomAttributes(typeof(ItemTypeAttribute), false) as ItemTypeAttribute[];
-                if (attributes is null ||
-                    attributes.Length == 0)
-                {
-                    throw new TypedItemException("ItemType attribute is missing");
-                }
-
-                var name = attributes[0].Name;
-                
-                var parent = type.BaseType!;
-
-                if (parent == typeof(TypedItemBase))
-                {
-                    return name;
-                }
-
-                return ComputeItemType(parent) + "." + name;
-            }
         }
 
         public static bool IsFinal => typeof(TItemType).IsSealed;
@@ -65,4 +54,61 @@ namespace TypedItem.Lib
             }
         }
     }
+
+    internal static class InternalHelpers
+    {
+        internal static string? GetItemType(this Type type)
+        {
+            var attribute = GetItemTypeAttribute(type);
+                
+            if (attribute is null)
+            {
+                return null;
+            }
+                
+            var name = attribute.Name;
+
+            var parentInfo = GetParentWithItemType(type.BaseType);
+
+            while (parentInfo is not null)
+            {
+                var (parentType, parentName) = parentInfo.Value;
+                name = parentName + "." + name;
+                parentInfo = GetParentWithItemType(parentType?.BaseType);
+            }
+                
+            return name;
+            
+            ItemTypeAttribute? GetItemTypeAttribute(Type currentType)
+            {
+                var attributes = currentType.GetCustomAttributes(typeof(ItemTypeAttribute), false) as ItemTypeAttribute[];
+
+                return attributes is null or { Length: 0 } ? null : attributes[0];
+            }
+            
+            (Type, string)? GetParentWithItemType(Type? currentType)
+            {
+                if (currentType is null)
+                {
+                    return null;
+                }
+
+                if (currentType == typeof(TypedItemBase))
+                {
+                    return null;
+                }
+
+                var attribute = GetItemTypeAttribute(currentType);
+                if (attribute is null)
+                {
+                    return GetParentWithItemType(currentType.BaseType);
+                }
+
+                var parentName = attribute.Name;
+
+                return (currentType, parentName);
+            }
+        }
+    }
+    
 }

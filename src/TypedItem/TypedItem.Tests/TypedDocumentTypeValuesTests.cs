@@ -28,14 +28,15 @@ namespace TypedItem.Tests
             Check.That(TypedItemHelper<TypeAEventItem>.ItemType).IsEqualTo("event.typeA");
             Check.That(TypedItemHelper<TypeAEventItem>.IsFinal).IsTrue();
         }
-
+        
         [Fact]
-        public void class_with_parent_class_without_type_attribute_is_invalid()
+        public void class_that_inherit_from_another_class_is_valid_if_an_event_type_is_not_present_at_each_level()
         {
-            Check.ThatCode(() => TypedItemHelper<TypeB1EventItem>.ItemType).Throws<TypedItemException>();
-           
+            Check.That(TypedItemHelper<TypeB1EventItem>.ItemType).IsEqualTo("event.typeB1");
+            Check.That(TypedItemHelper<TypeB1EventItem>.IsFinal).IsTrue();
         }
-
+        
+        
         [Fact]
         public void class_without_type_attribute_is_invalid()
         {
