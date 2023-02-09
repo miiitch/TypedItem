@@ -1,12 +1,15 @@
-﻿using Newtonsoft.Json;
+﻿using System.ComponentModel;
+using Newtonsoft.Json;
 
 namespace TypedItem.Lib
 {
-    public class TypedItemBase : ItemBase
+    public abstract class TypedItemBase : ItemBase
     {
         [JsonProperty("_deleted")] public bool Deleted { get; set; }
 
-        [JsonProperty("_type")] public string? ItemType { get; set; }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [JsonProperty("_type")] 
+        public string? ItemType { get; set; }
 
         
     }

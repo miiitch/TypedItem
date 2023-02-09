@@ -19,23 +19,23 @@ namespace Microsoft.Azure.Cosmos
             return options;
         }
         
-        public static PartitionKey AsPartitionKey(this string partitionKey) => new PartitionKey(partitionKey);
+        
 
         public static Task<ItemResponse<T>> UpsertTypedItemAsync<T>(this Container container,
             T item,
-            PartitionKey? partitionKey = null,
+            PartitionKey? Partition = null,
             ItemRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) where T: TypedItemBase, new()
         {
-            TypedItemHelper<T>.PrepareItem(item);
-            return container.UpsertItemAsync(item, partitionKey, requestOptions, cancellationToken);
+            TypedItemHelper<T>.PrepareItem(item, generateId: true);
+            return container.UpsertItemAsync(item, Partition, requestOptions, cancellationToken);
         }
         
         public static TransactionalBatch UpsertTypedItem<T>(this TransactionalBatch batch,
             T item,
             TransactionalBatchItemRequestOptions? requestOptions = null) where T: TypedItemBase, new()
         {
-            TypedItemHelper<T>.PrepareItem(item);
+            TypedItemHelper<T>.PrepareItem(item, generateId: true);
             return batch.UpsertItem(item, requestOptions);
         }
         
@@ -44,12 +44,12 @@ namespace Microsoft.Azure.Cosmos
         public static Task<ItemResponse<T>> ReplaceTypedItemAsync<T>(this Container container,
             T item,
             string id,
-            PartitionKey? partitionKey = null,
+            PartitionKey? Partition = null,
             ItemRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) where T: TypedItemBase, new()
         {
             TypedItemHelper<T>.PrepareItem(item);
-            return container.ReplaceItemAsync(item, id, partitionKey, requestOptions, cancellationToken);
+            return container.ReplaceItemAsync(item, id, Partition, requestOptions, cancellationToken);
         }
         
         public static TransactionalBatch ReplaceTypedItem<T>(this TransactionalBatch batch,
@@ -65,12 +65,12 @@ namespace Microsoft.Azure.Cosmos
         
         public static Task<ItemResponse<T>> CreateTypedItemAsync<T>(this Container container,
             T item,
-            PartitionKey? partitionKey = null,
+            PartitionKey? Partition = null,
             ItemRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = default) where T: TypedItemBase, new()
         {
-            TypedItemHelper<T>.PrepareItem(item);
-            return container.CreateItemAsync(item, partitionKey, requestOptions, cancellationToken);
+            TypedItemHelper<T>.PrepareItem(item,generateId:true);
+            return container.CreateItemAsync(item, Partition, requestOptions, cancellationToken);
         }
         
         public static TransactionalBatch CreateTypedItem<T>(this TransactionalBatch batch,
@@ -146,12 +146,12 @@ namespace Microsoft.Azure.Cosmos
 
         public static async Task<ItemResponse<T>> ReadTypedItemAsync<T>(this Container container,
             string id,
-            PartitionKey partitionKey,
+            PartitionKey Partition,
             TypedItemRequestOptions? options = null,
             CancellationToken cancellationToken = default) where T : TypedItemBase, new()
         {
             var readDeleted = options is { ReadDeleted: true };
-            var result = await container.ReadItemAsync<T>(id, partitionKey, options, cancellationToken);
+            var result = await container.ReadItemAsync<T>(id, Partition, options, cancellationToken);
             if (result is null ||
                 !readDeleted && result.Resource.Deleted ||
                 !TypedItemHelper<T>.HasSameType(result.Resource))
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.Cosmos
 
         public static Task<ItemResponse<T>> SoftDeleteTypedItemAsync<T>(this Container container,
             string id,
-            PartitionKey partitionKey,
+            PartitionKey Partition,
             ItemRequestOptions? requestOptions = null,
             CancellationToken cancellationToken = new()) where T : TypedItemBase, new()
         {
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.Cosmos
             var patchOptions = new PatchItemRequestOptions();
             requestOptions?.Fill(patchOptions);
             patchOptions.FilterPredicate = "FROM item WHERE NOT item._deleted";
-            return container.PatchItemAsync<T>(id, partitionKey, patchOperations, patchOptions, cancellationToken);
+            return container.PatchItemAsync<T>(id, Partition, patchOperations, patchOptions, cancellationToken);
         }
         
         public static TransactionalBatch SoftDeleteTypedItem(this TransactionalBatch batch, string id,  TransactionalBatchPatchItemRequestOptions? requestOptions = null)
@@ -204,12 +204,13 @@ namespace Microsoft.Azure.Cosmos
                 // ReSharper disable once NotResolvedInText
                 throw new ArgumentNullException("item.id");
             }
-            
-            if (item.PartitionKey is null)
+
+            var partitionKey = item.GetPartitionKey();
+            if (partitionKey == PartitionKey.Null || partitionKey == PartitionKey.None)
             {
-                // ReSharper disable once NotResolvedInText
-                throw new ArgumentNullException("item.PartitionKey");
+                throw new ArgumentException("Partition key is null or empty");
             }
+          
 
             if (item.Deleted)
             {
@@ -219,7 +220,7 @@ namespace Microsoft.Azure.Cosmos
             requestOptions ??= new ItemRequestOptions();
             requestOptions.IfMatchEtag = item.ETag;
 
-            return container.SoftDeleteTypedItemAsync<T>(item.Id, item.PartitionKey.AsPartitionKey(), requestOptions, cancellationToken);
+            return container.SoftDeleteTypedItemAsync<T>(item.Id, partitionKey, requestOptions, cancellationToken);
         }
 
         private static void Fill(this ItemRequestOptions itemRequestOptions,

@@ -5,7 +5,7 @@ using TypedItem.Lib;
 namespace TypedItem.Tests.ItemModels
 {
     [ItemType("event")]
-    public class EventItem: TypedItemBase
+    public class EventItem: ContainerItem
     {
         [JsonProperty("date")]
         public DateTime Date { get; set; }
@@ -45,7 +45,7 @@ namespace TypedItem.Tests.ItemModels
         
     }
 
-    public class CustomAndInvalidItem : TypedItemBase
+    public class CustomAndInvalidItem : ContainerItem
     {
         
     }

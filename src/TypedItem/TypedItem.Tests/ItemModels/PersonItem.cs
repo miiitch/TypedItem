@@ -5,7 +5,7 @@ using TypedItem.Lib;
 namespace TypedItem.Tests.ItemModels
 {
     [ItemType("person")]
-    public sealed class PersonItem: TypedItemBase
+    public sealed class PersonItem: ContainerItem
     {
 
         [JsonProperty("firstName")]

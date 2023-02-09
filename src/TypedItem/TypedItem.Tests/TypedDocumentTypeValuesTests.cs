@@ -46,7 +46,7 @@ namespace TypedItem.Tests
         [Fact]
         public void root_class_is_not_valid_for_type_computation()
         {
-            Check.ThatCode(() => TypedItemHelper<TypedItemBase>.ItemType).Throws<TypedItemException>();
+            Check.ThatCode(() => TypedItemHelper<ContainerItem>.ItemType).Throws<TypedItemException>();
         }
         
         [Fact]

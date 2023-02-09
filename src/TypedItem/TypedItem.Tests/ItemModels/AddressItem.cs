@@ -3,7 +3,7 @@
 namespace TypedItem.Tests.ItemModels
 {
     [ItemType("address")]
-    public sealed class AddressItem : TypedItemBase
+    public sealed class AddressItem : ContainerItem
     {
   
         

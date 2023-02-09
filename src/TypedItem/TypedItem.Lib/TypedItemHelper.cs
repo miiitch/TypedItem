@@ -36,7 +36,7 @@ namespace TypedItem.Lib
         {
             if (!IsFinal)
             {
-                throw new TypedItemException("Cannot fill item data for non final object");
+                throw new TypedItemException("Cannot fill item data for non sealed class");
             }
             var itemType = ItemType;
             if (item.ItemType is null)

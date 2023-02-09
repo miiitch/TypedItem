@@ -87,7 +87,7 @@ namespace TypedItem.Tests
                     FirstName = firstNames[rnd.Next(firstNames.Length)],
                     LastName = lastNames[rnd.Next(lastNames.Length)],
                     BirthDate = birthdate,
-                    PartitionKey = $"P{(i / 100)}",
+                    Part = $"P{(i / 100)}",
                     Deleted = i%10 == 0,
                     Index = i
                 };
@@ -113,7 +113,7 @@ namespace TypedItem.Tests
         public async Task InitializeAsync()
         {
             _containerId = _cosmosDb.GenerateId();
-            var response = await _cosmosDb.Database.CreateContainerAsync(new ContainerProperties(_containerId, "/_pk"));
+            var response = await _cosmosDb.Database.CreateContainerAsync(new ContainerProperties(_containerId, "/part"));
             Container = response.Container;
         }
 
@@ -131,7 +131,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.CreateTypedItemAsync(expectedPersonItem);
@@ -139,14 +139,14 @@ namespace TypedItem.Tests
 
             var readResponse =
                 await Container.ReadTypedItemAsync<PersonItem>(expectedPersonItem.Id,
-                    expectedPersonItem.PartitionKey.AsPartitionKey());
+                    expectedPersonItem.GetPartitionKey());
 
             var actualPerson = readResponse.Resource;
 
             Check.That(actualPerson.Id).IsEqualTo(expectedPersonItem.Id);
             Check.That(actualPerson.FirstName).IsEqualTo(expectedPersonItem.FirstName);
             Check.That(actualPerson.LastName).IsEqualTo(expectedPersonItem.LastName);
-            Check.That(actualPerson.PartitionKey).IsEqualTo(expectedPersonItem.PartitionKey);
+            Check.That(actualPerson.Part).IsEqualTo(expectedPersonItem.Part);
             Check.That(actualPerson.ItemType).IsEqualTo("person");
         }
         
@@ -158,7 +158,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             var batch = Container.CreateTransactionalBatch(new PartitionKey("01"));
@@ -167,14 +167,14 @@ namespace TypedItem.Tests
             Check.That(expectedPersonItem.ItemType).IsEqualTo("person");
             var readResponse =
                 await Container.ReadTypedItemAsync<PersonItem>(expectedPersonItem.Id,
-                    expectedPersonItem.PartitionKey.AsPartitionKey());
+                    expectedPersonItem.GetPartitionKey());
 
             var actualPerson = readResponse.Resource;
 
             Check.That(actualPerson.Id).IsEqualTo(expectedPersonItem.Id);
             Check.That(actualPerson.FirstName).IsEqualTo(expectedPersonItem.FirstName);
             Check.That(actualPerson.LastName).IsEqualTo(expectedPersonItem.LastName);
-            Check.That(actualPerson.PartitionKey).IsEqualTo(expectedPersonItem.PartitionKey);
+            Check.That(actualPerson.Part).IsEqualTo(expectedPersonItem.Part);
             Check.That(actualPerson.ItemType).IsEqualTo("person");
         }
         
@@ -186,7 +186,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             var createResult = await Container.CreateTypedItemAsync(expectedPersonItem);
@@ -195,14 +195,14 @@ namespace TypedItem.Tests
             createdPerson.LastName = "Doee";
             var readResponse =
                 await Container.ReplaceTypedItemAsync<PersonItem>(createResult,createdPerson.Id!,
-                    createdPerson.PartitionKey!.AsPartitionKey());
+                    createdPerson.GetPartitionKey());
 
             var actualPerson = readResponse.Resource;
 
             Check.That(actualPerson.Id).IsEqualTo(createdPerson.Id);
             Check.That(actualPerson.FirstName).IsEqualTo(createdPerson.FirstName);
             Check.That(actualPerson.LastName).IsEqualTo(createdPerson.LastName);
-            Check.That(actualPerson.PartitionKey).IsEqualTo(expectedPersonItem.PartitionKey);
+            Check.That(actualPerson.Part).IsEqualTo(expectedPersonItem.Part);
             Check.That(actualPerson.ItemType).IsEqualTo("person");
         }
         
@@ -214,7 +214,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             var createResult = await Container.CreateTypedItemAsync(expectedPersonItem);
@@ -231,7 +231,7 @@ namespace TypedItem.Tests
             Check.That(actualPerson.Id).IsEqualTo(createdPerson.Id);
             Check.That(actualPerson.FirstName).IsEqualTo(createdPerson.FirstName);
             Check.That(actualPerson.LastName).IsEqualTo(createdPerson.LastName);
-            Check.That(actualPerson.PartitionKey).IsEqualTo(expectedPersonItem.PartitionKey);
+            Check.That(actualPerson.Part).IsEqualTo(expectedPersonItem.Part);
             Check.That(actualPerson.ItemType).IsEqualTo("person");
         }
 
@@ -243,7 +243,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01",
+                Part = "01",
                 ItemType = "foo"
             };
 
@@ -258,7 +258,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01",
+                Part = "01",
                 ItemType = "foo"
             };
 
@@ -275,19 +275,19 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.UpsertTypedItemAsync(personItem);
 
             var savedPersonResponse =
-                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
+                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.GetPartitionKey());
 
             var savedPerson = savedPersonResponse.Resource;
 
             Check.That(savedPerson["_type"].ToString()).Equals(personItem.ItemType);
             Check.That(savedPerson["_deleted"].ToObject<bool>()).Equals(personItem.Deleted);
-            Check.That(savedPerson["_type"]).IsEqualTo("person");
+            Check.That(savedPerson["_type"].ToString()).IsEqualTo("person");
         }
         
         [Fact]
@@ -298,7 +298,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             var batch = Container.CreateTransactionalBatch(new PartitionKey("01"));
@@ -307,13 +307,13 @@ namespace TypedItem.Tests
             await batch.ExecuteAsync();
 
             var savedPersonResponse =
-                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
+                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.GetPartitionKey());
 
             var savedPerson = savedPersonResponse.Resource;
 
             Check.That(savedPerson["_type"].ToString()).Equals(personItem.ItemType);
             Check.That(savedPerson["_deleted"].ToObject<bool>()).Equals(personItem.Deleted);
-            Check.That(savedPerson["_type"]).IsEqualTo("person");
+            Check.That(savedPerson["_type"].ToObject<string>()).IsEqualTo("person");
         }
 
         [Fact]
@@ -324,7 +324,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.UpsertTypedItemAsync(personItem);
@@ -332,11 +332,11 @@ namespace TypedItem.Tests
 
             Check.ThatAsyncCode(async () =>
                     await Container.ReadTypedItemAsync<PersonItem>(personItem.Id,
-                        personItem.PartitionKey.AsPartitionKey()))
+                        personItem.GetPartitionKey()))
                 .Throws<CosmosException>();
 
             var savedPersonResponse =
-                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
+                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.GetPartitionKey());
 
             var savedPerson = savedPersonResponse.Resource;
 
@@ -351,7 +351,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.UpsertTypedItemAsync(personItem);
@@ -363,11 +363,11 @@ namespace TypedItem.Tests
             
             Check.ThatAsyncCode(async () =>
                     await Container.ReadTypedItemAsync<PersonItem>(personItem.Id,
-                        personItem.PartitionKey.AsPartitionKey()))
+                        personItem.GetPartitionKey()))
                 .Throws<CosmosException>();
 
             var savedPersonResponse =
-                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
+                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.GetPartitionKey());
 
             var savedPerson = savedPersonResponse.Resource;
 
@@ -382,22 +382,22 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.UpsertTypedItemAsync(personItem);
             await Container.SoftDeleteTypedItemAsync<PersonItem>(
                 id: personItem.Id, 
-                partitionKey: personItem.PartitionKey.AsPartitionKey(),
+                Partition: personItem.GetPartitionKey(),
                 requestOptions: new ItemRequestOptions());
 
             Check.ThatAsyncCode(async () =>
                     await Container.ReadTypedItemAsync<PersonItem>(personItem.Id,
-                        personItem.PartitionKey.AsPartitionKey()))
+                        personItem.GetPartitionKey()))
                 .Throws<CosmosException>();
 
             var savedPersonResponse =
-                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.PartitionKey.AsPartitionKey());
+                await Container.ReadItemAsync<JObject>(personItem.Id, personItem.GetPartitionKey());
 
             var savedPerson = savedPersonResponse.Resource;
 
@@ -412,14 +412,14 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.UpsertTypedItemAsync(actualPersonItem);
             await Container.SoftDeleteTypedItemAsync(actualPersonItem);
 
             var response = await Container.ReadTypedItemAsync<PersonItem>(actualPersonItem.Id,
-                actualPersonItem.PartitionKey.AsPartitionKey(),
+                actualPersonItem.GetPartitionKey(),
                 new TypedItemRequestOptions()
                 {
                     ReadDeleted = true
@@ -430,7 +430,7 @@ namespace TypedItem.Tests
             Check.That(actualDeletedPerson.Id).IsEqualTo(actualPersonItem.Id);
             Check.That(actualDeletedPerson.FirstName).IsEqualTo(actualPersonItem.FirstName);
             Check.That(actualDeletedPerson.LastName).IsEqualTo(actualPersonItem.LastName);
-            Check.That(actualDeletedPerson.PartitionKey).IsEqualTo(actualPersonItem.PartitionKey);
+            Check.That(actualDeletedPerson.Part).IsEqualTo(actualPersonItem.Part);
             Check.That(actualDeletedPerson.Deleted).IsTrue();
         }
 
@@ -443,7 +443,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             await Container.UpsertTypedItemAsync(personItem);
@@ -451,7 +451,7 @@ namespace TypedItem.Tests
 
             Check.ThatAsyncCode(async () =>
                     await Container.ReadTypedItemAsync<AddressItem>(personItem.Id,
-                        personItem.PartitionKey.AsPartitionKey()))
+                        personItem.GetPartitionKey()))
                 .Throws<CosmosException>();
         }
 
@@ -463,7 +463,7 @@ namespace TypedItem.Tests
                 Id = _cosmosDb.GenerateId(),
                 FirstName = "John",
                 LastName = "Doe",
-                PartitionKey = "01"
+                Part = "01"
             };
 
             var response = await Container.UpsertTypedItemAsync(personItem);
@@ -494,7 +494,7 @@ namespace TypedItem.Tests
             var personItem = new PersonItem()
             {
                 Id = null,
-                PartitionKey = "JK",
+                Part = "JK",
                 FirstName = "John",
                 LastName = "Doe",
             };
@@ -509,7 +509,7 @@ namespace TypedItem.Tests
         public Task cant_soft_delete_an_unknown_item()
         {
             // ReSharper disable once StringLiteralTypo
-            Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync<PersonItem>("toto","titi".AsPartitionKey()))
+            Check.ThatAsyncCode(async () => await Container.SoftDeleteTypedItemAsync<PersonItem>("toto",new PartitionKey("titi")))
                 .Throws<CosmosException>();
 
             return Task.CompletedTask;
@@ -594,7 +594,7 @@ namespace TypedItem.Tests
                 PartitionKey = new PartitionKey(pk)
             };
             result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
-            Check.That(result.Results.All(_ => _.PartitionKey == pk));
+            Check.That(result.Results.All(_ => _.Part == pk));
             
             // ConsistencyLevel
             options = new QueryTypedItemsOptions()
@@ -602,7 +602,7 @@ namespace TypedItem.Tests
                 ConsistencyLevel = ConsistencyLevel.Eventual
             };
             result = await Container.QueryTypedItemAsync<PersonItem, PersonItem>(p => p.OrderBy(_ => _.Index) ,options);
-            Check.That(result.Results.All(_ => _.PartitionKey == pk));
+            Check.That(result.Results.All(_ => _.Part == pk));
         }
 
 
