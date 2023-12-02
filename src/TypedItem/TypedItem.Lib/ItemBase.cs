@@ -16,5 +16,14 @@ namespace TypedItem.Lib
         
         protected static PartitionKey CreatePartitionKey(string partitionItem) => new PartitionKey(partitionItem);
 
+        protected static PartitionKey CreatePartitionKey(params string[] partitionKeyParts)
+        {
+            var partitionKeyBuilder = new PartitionKeyBuilder();
+            foreach (var partitionKeyPart in partitionKeyParts)
+            {
+                partitionKeyBuilder.Add(partitionKeyPart);
+            }
+            return partitionKeyBuilder.Build();
+        }
     }
 }
