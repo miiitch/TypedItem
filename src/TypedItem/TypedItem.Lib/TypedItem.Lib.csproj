@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
-        <LangVersion>9</LangVersion>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <PackageId>TypedItem</PackageId>
         <Title>A set of CosmosDB extension to managed typed container items</Title>
@@ -10,16 +9,18 @@
         <RepositoryUrl>https://github.com/miiitch/TypedItem</RepositoryUrl>
         <PackageTags>CosmosDB c# csharp dotnet .net</PackageTags>
         <PackageProjectUrl>https://github.com/miiitch/TypedItem</PackageProjectUrl>
-        <PackageLicenseUrl>https://raw.githubusercontent.com/miiitch/TypedItem/main/LICENSE</PackageLicenseUrl>
-        <PackageIconUrl>https://raw.githubusercontent.com/miiitch/TypedItem/main/icon.png</PackageIconUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.34.0" />
+      <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.59.0" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>
 
     <ItemGroup>
       <None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
+      <None Include="..\..\..\icon.png" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

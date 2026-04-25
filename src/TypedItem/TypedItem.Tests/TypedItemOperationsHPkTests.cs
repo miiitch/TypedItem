@@ -11,8 +11,9 @@ using System.Linq;
 
 namespace TypedItem.Tests;
 
+[Collection(CosmosDbCollection.Name)]
 public class TypedItemOperationsHPkTests
-    : IClassFixture<CosmosDbDatabaseFixture>, IAsyncLifetime
+    : IAsyncLifetime
 {
     private readonly CosmosDbDatabaseFixture _cosmosDb;
     private string _containerId;
@@ -172,7 +173,7 @@ public class TypedItemOperationsHPkTests
             ItemType = "foo"
         };
 
-        Check.ThatAsyncCode(async () => await Container.UpsertTypedItemAsync(personItem)).ThrowsAny();
+        Check.ThatCode(async () => await Container.UpsertTypedItemAsync(personItem)).ThrowsAny();
     }
         
     [Fact]
