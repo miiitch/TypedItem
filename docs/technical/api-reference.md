@@ -129,7 +129,7 @@ Executes a LINQ query filtered by `_type`. If `TFrom` is sealed, uses an exact m
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `MaxItemCount` | `int` | SDK default | Max documents per page |
-| `IncludeDeletedItems` | `bool?` | `null` (include all) | Set `false` to exclude `_deleted = true` items |
+| `IncludeDeletedItems` | `bool` | `false` | When `false`, excludes soft-deleted items. When `true`, includes them. Note: if `queryOptions` is `null`, no filter is applied (all items returned) |
 | `ReadAllPages` | `bool` | `false` | Automatically fetch all pages |
 | `ContinuationToken` | `string?` | `null` | Resume from a previous page |
 | `MaxConcurrency` | `int?` | `null` | Max parallel partition queries |
@@ -189,4 +189,4 @@ Every item class ultimately inherits these JSON-mapped properties:
 | `ItemType` | `_type` | Type identifier set by the library |
 | `Deleted` | `_deleted` | Soft-delete flag (`false` by default) |
 
-`ItemType` and `Deleted` are marked `[EditorBrowsable(EditorBrowsableState.Never)]` to reduce IDE noise — they are managed by the library, not by application code.
+`ItemType` is marked `[EditorBrowsable(EditorBrowsableState.Never)]` to reduce IDE noise — it is managed by the library, not by application code.

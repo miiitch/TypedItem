@@ -1,162 +1,109 @@
 # TypedItem
 
-This library is a set of method extensions other CosmosDb SQL Api to handle typed elements and soft delete in a container
+**TypedItem** is a .NET extension library for **Azure Cosmos DB (SQL API)** that adds typed item management, soft delete, and hierarchical type queries to any Cosmos DB container.
 
-## Why giving a type for giving a type in a CosmosDb Container.
+Each document stores a `_type` field computed from C# inheritance and `[ItemType]` attributes. This lets you safely store multiple item types in a single container and query them with full type safety.
 
-This is wellknown best practice for Cosmos DB (see: https://youtu.be/bQBeTeYUrR8?t=1074). This library helps you to hide the complexity of the type management
+## Installation
 
-## What are the constraints on my container?
-
-TypedItem add specifics fields and methods in your documents:
-* ```_pk``` the partition key ( for 1.X version of the SDK)
-* ```_type``` the type of the item 
-* ```_deleted``` the deletion status (SoftDelete)
-
-Type and deletion status are handled by the extention methods
-
-Starting with version 2.0, the library is compatible with the 3.X version of the SDK. The partition key is now managed by the fonction ```abstract PartitionKey GetPartitionKey()``` and the library doesn't need the ```_pk``` field anymore. This model let you manage the partition key as you want. Even for hierarchical partition key
-
-### Before 2.0: How to add a type to a class ? 
-
-You have to:
-* inherits from ```TypedItemBase```
-* add the attribute ```ItemType```
-* seal the class
-
-For example:
-
-
-```csharp
- 
-    [ItemType("person")]
-    public sealed class PersonItem: TypedItemBase
-    {
-
-        [JsonProperty("firstName")]
-        public string FirstName { get; set; }
-        
-        [JsonProperty("lastName")]
-        public string LastName { get; set; }
-        
-        [JsonProperty("birthdate")]
-        public DateTime BirthDate { get; set; }
-    }
-```
-In the container, the type will be ```person```
-
-
-If you what to create type hierarchy you can do this:
-
-```csharp
- 
-    [ItemType("event")]
-    public class EventItem: TypedItemBase
-    {
-
-        [JsonProperty("date")]
-        public DateTime Date { get; set; }              
-    }
-
-    [ItemType("phonecall")]
-    public sealed class PhonecallItem: EventItem
-    {
-
-        [JsonProperty("date")]
-        public int Duration { get; set; }
-    }
-
-    [ItemType("teamsmeeting")]
-    public sealed class TeamsMeeting: EventItem
-    {
-
-        [JsonProperty("peoples")]
-        public string[] Peoples { get; set; }
-    }
-
+```bash
+dotnet add package TypedItem
 ```
 
-You can create 2 differents items in the container:
-* one with the type ```event.phonecall``` 
-* one with the type ```event.teamsmeeting```
+Requires **Microsoft.Azure.Cosmos 3.x** and **.NET 10**.
 
-You can query all the events at once too with the method ```QueryTypedItemAsync```
+## Quick start
 
-
-### After 2.0: How to add a type to a class ?
-
-You have to:
-* create a root class from ```TypedItemBase``` to manage the partition key
-* add the attribute ```ItemType```
-* seal the class
-
-For example:
+### 1 — Define a partition-key base class
 
 ```csharp
- 
-    public class ContainerItem : TypedItemBase
-    {
-        [JsonProperty("part")]
-        public string Part { get; set; }
-            
-        public override PartitionKey GetPartitionKey()
-        {
-            return CreatePartitionKey(Part);
-        }
-    }
+public class MyContainerItem : TypedItemBase
+{
+    [JsonProperty("part")]
+    public string Part { get; set; }
+
+    public override PartitionKey GetPartitionKey()
+        => CreatePartitionKey(Part);
+}
 ```
+
+### 2 — Define typed item classes
+
+Annotate with `[ItemType("name")]`. Write operations require a `sealed` class.
 
 ```csharp
- 
-    [ItemType("person")]
-    public sealed class PersonItem: ContainerItem
-    {
-
-        [JsonProperty("firstName")]
-        public string FirstName { get; set; }
-        
-        [JsonProperty("lastName")]
-        public string LastName { get; set; }
-        
-        [JsonProperty("birthdate")]
-        public DateTime BirthDate { get; set; }
-    }
+[ItemType("person")]
+public sealed class PersonItem : MyContainerItem
+{
+    [JsonProperty("firstName")] public string FirstName { get; set; }
+    [JsonProperty("lastName")]  public string LastName  { get; set; }
+}
 ```
-In the container, the type will be ```person```
 
+### 3 — Use extension methods
 
-If you what to create type hierarchy you can do this:
+All methods extend `Microsoft.Azure.Cosmos.Container` and `TransactionalBatch`:
 
 ```csharp
- 
-    [ItemType("event")]
-    public class EventItem: ContainerItem
-    {
+// Write
+await container.CreateTypedItemAsync(person);
+await container.UpsertTypedItemAsync(person);
+await container.ReplaceTypedItemAsync(person, person.Id);
 
-        [JsonProperty("date")]
-        public DateTime Date { get; set; }              
-    }
+// Read — throws CosmosException (404) if soft-deleted or wrong type
+var response = await container.ReadTypedItemAsync<PersonItem>(id, partitionKey);
 
-    [ItemType("phonecall")]
-    public sealed class PhonecallItem: EventItem
-    {
+// Soft-delete (sets _deleted = true via conditional PATCH)
+await container.SoftDeleteTypedItemAsync(person);
 
-        [JsonProperty("date")]
-        public int Duration { get; set; }
-    }
-
-    [ItemType("teamsmeeting")]
-    public sealed class TeamsMeeting: EventItem
-    {
-
-        [JsonProperty("peoples")]
-        public string[] Peoples { get; set; }
-    }
-
+// Query
+var result = await container.QueryTypedItemAsync<PersonItem, PersonItem>(q => q);
 ```
 
-You can create 2 differents items in the container:
-* one with the type ```event.phonecall```
-* one with the type ```event.teamsmeeting```
+## Type hierarchy
 
-You can query all the events at once too with the method ```QueryTypedItemAsync```
+Use C# inheritance with multiple `[ItemType]` attributes to build dot-separated type hierarchies:
+
+```csharp
+[ItemType("event")]                   // non-sealed = queryable parent
+public class EventItem : MyContainerItem
+{
+    [JsonProperty("date")] public DateTime Date { get; set; }
+}
+
+[ItemType("phonecall")]               // _type stored as "event.phonecall"
+public sealed class PhonecallItem : EventItem
+{
+    [JsonProperty("duration")] public int Duration { get; set; }
+}
+
+[ItemType("meeting")]                 // _type stored as "event.meeting"
+public sealed class MeetingItem : EventItem
+{
+    [JsonProperty("attendees")] public string[] Attendees { get; set; }
+}
+```
+
+`QueryTypedItemAsync` automatically filters by type:
+
+```csharp
+// Returns only phone calls
+var calls = await container.QueryTypedItemAsync<PhonecallItem, PhonecallItem>(q => q);
+
+// Returns ALL events (phone calls + meetings)
+var events = await container.QueryTypedItemAsync<EventItem, EventItem>(q => q);
+```
+
+## Fields stored in documents
+
+| JSON field | Description |
+|---|---|
+| `_type` | Dot-separated type identifier (e.g., `"event.phonecall"`) |
+| `_deleted` | Soft-delete flag (`true` = logically deleted) |
+| `id` | Document id (auto-generated if not set) |
+
+## Links
+
+- [Getting Started](docs/user/getting-started.md) — full usage guide with all options
+- [API Reference](docs/technical/api-reference.md) — all extension methods and types
+- [Running Tests](docs/technical/running-tests.md) — test infrastructure and known limitations
